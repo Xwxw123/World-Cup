@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup Match Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0c3318;
+            overflow-x: hidden;
+        }
+
+        /* ── Field background ── */
+        .field {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg,
+                #0a2e14 0%, #155a28 20%, #0f4a20 50%, #155a28 80%, #0a2e14 100%);
+            z-index: 0;
+        }
+
+        .field::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px, transparent 80px,
+                rgba(0,0,0,0.07) 80px, rgba(0,0,0,0.07) 160px
+            );
+        }
+
+        .field-border {
+            position: absolute;
+            inset: 24px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .field-midline {
+            position: absolute;
+            left: 50%; top: 0; bottom: 0;
+            width: 2px;
+            background: rgba(255,255,255,0.1);
+            transform: translateX(-50%);
+        }
+
+        .field-circle {
+            position: absolute;
+            width: 220px; height: 220px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .field-dot {
+            position: absolute;
+            width: 10px; height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .field-box-left {
+            position: absolute;
+            left: 24px; top: 50%;
+            width: 90px; height: 200px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-left: none;
+            transform: translateY(-50%);
+        }
+
+        .field-box-right {
+            position: absolute;
+            right: 24px; top: 50%;
+            width: 90px; height: 200px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-right: none;
+            transform: translateY(-50%);
+        }
+
+        /* ── Card ── */
+        .card {
+            position: relative;
+            z-index: 10;
+            background: rgba(4, 14, 7, 0.9);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            padding: 48px 44px 44px;
+            width: 100%;
+            max-width: 620px;
+            margin: 24px;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+        }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header .ball {
+            font-size: 52px;
+            display: block;
+            margin-bottom: 14px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50%       { transform: translateY(-10px); }
+        }
+
+        .header h1 {
+            color: #f0fdf4;
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: #4a8a5e;
+            font-size: 13px;
+            margin-top: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Team selector ── */
+        .team-selector {
+            display: grid;
+            grid-template-columns: 1fr 60px 1fr;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 28px;
+        }
+
+        .team-col label {
+            display: block;
+            color: #4a8a5e;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .team-col select {
+            width: 100%;
+            padding: 13px 40px 13px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: #f0fdf4;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a8a5e' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .team-col select:focus {
+            outline: none;
+            border-color: #22c55e;
+            background-color: rgba(34,197,94,0.07);
+        }
+
+        .team-col select option {
+            background: #061209;
+            color: #f0fdf4;
+        }
+
+        .vs-col {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 12px;
+        }
+
+        .vs-badge {
+            background: rgba(34,197,94,0.12);
+            border: 1px solid rgba(34,197,94,0.25);
+            color: #22c55e;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* ── Button ── */
+        .predict-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+            border: none;
+            border-radius: 14px;
+            color: #ffffff;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+            box-shadow: 0 4px 24px rgba(34,197,94,0.22);
+        }
+
+        .predict-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(34,197,94,0.32);
+        }
+
+        .predict-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /* ── Results ── */
+        .results {
+            margin-top: 32px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+            animation: fadeUp 0.35s ease;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .results-title h2 {
+            color: #f0fdf4;
+            font-size: 15px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .divider {
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.07);
+        }
+
+        /* Top result banner */
+        .top-banner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: linear-gradient(135deg, rgba(202,138,4,0.14), rgba(202,138,4,0.06));
+            border: 1px solid rgba(202,138,4,0.28);
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin-bottom: 22px;
+        }
+
+        .top-banner .trophy { font-size: 28px; }
+
+        .top-banner .label {
+            color: #92703a;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .top-banner .score {
+            color: #fcd34d;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+
+        /* Score bars */
+        .score-row {
+            display: grid;
+            grid-template-columns: 56px 1fr 44px;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .score-label {
+            color: #d1fae5;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .bar-track {
+            background: rgba(255,255,255,0.06);
+            border-radius: 999px;
+            height: 7px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            width: 0%;
+            transition: width 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bar-fill.gold {
+            background: linear-gradient(90deg, #b45309, #fcd34d);
+        }
+
+        .bar-fill.green {
+            background: linear-gradient(90deg, #15803d, #4ade80);
+        }
+
+        .pct-label {
+            color: #4a8a5e;
+            font-size: 12px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Error */
+        .error-msg {
+            color: #fca5a5;
+            font-size: 14px;
+            text-align: center;
+            padding: 14px;
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 10px;
+            margin-top: 16px;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 15px; height: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="field">
+    <div class="field-border"></div>
+    <div class="field-midline"></div>
+    <div class="field-circle"></div>
+    <div class="field-dot"></div>
+    <div class="field-box-left"></div>
+    <div class="field-box-right"></div>
+</div>
+
+<div class="card">
+
+    <div class="header">
+        <span class="ball">⚽</span>
+        <h1>Match Predictor</h1>
+        <p>FIFA World Cup Score Simulator</p>
+    </div>
+
+    <div class="team-selector">
+        <div class="team-col">
+            <label>Home Team</label>
+            <select id="home-select">
+                <option value="">Select team...</option>
+                {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="vs-col">
+            <div class="vs-badge">VS</div>
+        </div>
+
+        <div class="team-col">
+            <label>Away Team</label>
+            <select id="away-select">
+                <option value="">Select team...</option>
+                {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <button class="predict-btn" id="predict-btn" onclick="runPredict()">
+        Predict Match
+    </button>
+
+    <div class="results" id="results"></div>
+
+</div>
+
+<script>
+async function runPredict() {
+    const home = document.getElementById('home-select').value;
+    const away = document.getElementById('away-select').value;
+    const btn  = document.getElementById('predict-btn');
+    const out  = document.getElementById('results');
+
+    if (!home || !away) {
+        showError('Please select both teams.');
+        return;
+    }
+    if (home === away) {
+        showError('Please select two different teams.');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Simulating 100 matches…';
+    out.classList.remove('show');
+
+    try {
+        const res  = await fetch('/predict', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ home, away })
+        });
+        const data = await res.json();
+
+        if (data.error) { showError(data.error); return; }
+
+        render(data, home, away);
+    } catch (e) {
+        showError('Request failed — is the server running?');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Predict Match';
+    }
+}
+
+function render(data, home, away) {
+    const out    = document.getElementById('results');
+    const maxPct = data.results[0].pct;
+
+    let html = `
+        <div class="results-title">
+            <h2>${home} &nbsp;vs&nbsp; ${away}</h2>
+            <div class="divider"></div>
+        </div>
+        <div class="top-banner">
+            <span class="trophy">🏆</span>
+            <div>
+                <div class="label">Most Likely Score</div>
+                <div class="score">${data.top}</div>
+            </div>
+        </div>
+    `;
+
+    data.results.forEach((r, i) => {
+        const width    = ((r.pct / maxPct) * 100).toFixed(1);
+        const colorCls = i === 0 ? 'gold' : 'green';
+        html += `
+            <div class="score-row">
+                <div class="score-label">${r.score}</div>
+                <div class="bar-track">
+                    <div class="bar-fill ${colorCls}" data-w="${width}"></div>
+                </div>
+                <div class="pct-label">${r.pct}%</div>
+            </div>
+        `;
+    });
+
+    out.innerHTML = html;
+    out.classList.add('show');
+
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.bar-fill').forEach(b => {
+            b.style.width = b.dataset.w + '%';
+        });
+    });
+}
+
+function showError(msg) {
+    const out = document.getElementById('results');
+    out.innerHTML = `<div class="error-msg">${msg}</div>`;
+    out.classList.add('show');
+}
+</script>
+
+</body>
+</html>
